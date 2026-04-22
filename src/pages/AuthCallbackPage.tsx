@@ -14,24 +14,37 @@ export default function AuthCallbackPage() {
   const { setUser } = useAuthStore()
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.access_token) {
-        navigate('/auth')
-        return
-      }
-      try {
-        const resp = await authApi.googleAuth(session.access_token)
-        if (resp.status === 206) {
-          localStorage.setItem('cps_google_pending', JSON.stringify(resp.data))
-          navigate('/auth?complete=true')
-        } else {
-          setUser(resp.data.user, resp.data.token)
-          navigate('/home')
+    // Aguarda o Supabase processar o hash da URL
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.access_token) {
+        subscription.unsubscribe()
+        try {
+          const resp = await authApi.googleAuth(session.access_token)
+          if (resp.status === 206) {
+            localStorage.setItem('cps_google_pending', JSON.stringify(resp.data))
+            navigate('/auth?complete=true')
+          } else {
+            setUser(resp.data.user, resp.data.token)
+            navigate('/home')
+          }
+        } catch {
+          navigate('/auth')
         }
-      } catch {
+      } else if (event === 'SIGNED_OUT') {
         navigate('/auth')
       }
     })
+
+    // Timeout de segurança — se não autenticar em 10s, volta para auth
+    const timeout = setTimeout(() => {
+      subscription.unsubscribe()
+      navigate('/auth')
+    }, 10000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   return (
