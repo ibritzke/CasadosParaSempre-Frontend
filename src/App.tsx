@@ -13,14 +13,15 @@ import { Layout } from "@/components/layout/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { authApi } from "@/services/api";
 
-import AuthPage from "@/pages/AuthPage";
+import AuthPage from "@/pages/AuthPage/AuthPage";
 import HomePage from "@/pages/HomePage";
 import PillPage from "@/pages/PillPage";
 import RecordsPage from "@/pages/RecordsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import ProfilePage from "@/pages/ProfilePage";
-import AdminPage from "@/pages/AdminPage";
+import AdminPage from "@/pages/AdminPage/AdminPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const GlobalStyle = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -101,7 +102,7 @@ export default function App() {
               </AuthRoute>
             }
           />
-
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/home"
             element={
