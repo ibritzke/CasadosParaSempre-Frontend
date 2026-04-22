@@ -70,4 +70,6 @@ export const adminApi = {
   getPillStats: () => api.get('/admin/pill-stats'),
   toggleAdmin: (id: string) => api.patch(`/admin/users/${id}/admin`),
   toggleActive: (id: string) => api.patch(`/admin/users/${id}/active`),
+  deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
+  
 }
