@@ -250,9 +250,10 @@ export default function PillPage() {
             <button onClick={acceptResult} style={{ display:'block', width:'100%', padding:14, background:theme.primary, color:'#fff', border:'none', borderRadius:10, fontSize:15, fontWeight:500, cursor:'pointer', marginBottom:10 }}>
               Aceitar e fechar 💕
             </button>
-            <button onClick={() => setResult(null)} style={{ display:'block', width:'100%', padding:12, background:'transparent', color:theme.primary, border:`1.5px solid ${theme.primary}`, borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer' }}>
+           {/* cancelar e sair */}
+            {/* <button onClick={() => setResult(null)} style={{ display:'block', width:'100%', padding:12, background:'transparent', color:theme.primary, border:`1.5px solid ${theme.primary}`, borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer' }}>
               Fechar
-            </button>
+            </button> */}
           </ResultCard>
         </Overlay>
       )}
