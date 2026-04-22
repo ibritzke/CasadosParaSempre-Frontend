@@ -227,25 +227,23 @@ export default function AuthPage() {
   }
 
   const handleGoogle = async () => {
-    setLoading(true)
-    try {
-      const { data: sbData, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { skipBrowserRedirect: false } })
-      if (error || !sbData) { show('Erro ao conectar com Google'); setLoading(false); return }
-      // After redirect, user comes back and we get session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) { show('Sessão Google não encontrada'); setLoading(false); return }
-
-      const resp = await authApi.googleAuth(session.access_token)
-      if (resp.status === 206) {
-        setCompleteProfile(resp.data)
-      } else {
-        setUser(resp.data.user, resp.data.token)
-        navigate('/home')
-      }
-    } catch {
-      show('Erro no login com Google')
-    } finally { setLoading(false) }
+  setLoading(true)
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) {
+      show('Erro ao conectar com Google')
+      setLoading(false)
+    }
+  } catch {
+    show('Erro no login com Google')
+    setLoading(false)
   }
+}
 
   const handleCompleteProfile = async () => {
     if (!cpRole || !completeProfile) { show('Selecione seu papel no casal'); return }

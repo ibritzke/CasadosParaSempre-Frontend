@@ -54,7 +54,7 @@ export const wifeTheme = {
   pillText: '#8B3A62',
 }
 
-export type AppTheme = typeof husbandTheme
+export type AppTheme = typeof husbandTheme | typeof wifeTheme
 
 // Shared tokens
 export const shared = {

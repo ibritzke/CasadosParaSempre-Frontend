@@ -1,19 +1,26 @@
 // src/App.tsx
-import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { createGlobalStyle } from 'styled-components'
-import { ToastProvider } from '@/components/ui/Toast'
-import { Layout } from '@/components/layout/Layout'
-import { useAuthStore } from '@/store/auth.store'
-import { authApi } from '@/services/api'
+import React, { useEffect } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
+import { createGlobalStyle } from "styled-components";
+import { ToastProvider } from "@/components/ui/Toast";
+import { Layout } from "@/components/layout/Layout";
+import { useAuthStore } from "@/store/auth.store";
+import { authApi } from "@/services/api";
 
-import AuthPage    from '@/pages/AuthPage'
-import HomePage    from '@/pages/HomePage'
-import PillPage    from '@/pages/PillPage'
-import RecordsPage from '@/pages/RecordsPage'
-import CalendarPage from '@/pages/CalendarPage'
-import ProfilePage from '@/pages/ProfilePage'
-import AdminPage   from '@/pages/AdminPage'
+import AuthPage from "@/pages/AuthPage";
+import HomePage from "@/pages/HomePage";
+import PillPage from "@/pages/PillPage";
+import RecordsPage from "@/pages/RecordsPage";
+import CalendarPage from "@/pages/CalendarPage";
+import ProfilePage from "@/pages/ProfilePage";
+import AdminPage from "@/pages/AdminPage";
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 
 const GlobalStyle = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -37,40 +44,44 @@ const GlobalStyle = createGlobalStyle`
   ::-webkit-scrollbar { width: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
-`
+`;
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore()
-  if (!user) return <Navigate to="/auth" replace />
-  return <>{children}</>
+  const { user } = useAuthStore();
+  if (!user) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore()
-  if (!user) return <Navigate to="/auth" replace />
-  if (!user.isAdmin) return <Navigate to="/home" replace />
-  return <>{children}</>
+  const { user } = useAuthStore();
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!user.isAdmin) return <Navigate to="/home" replace />;
+  return <>{children}</>;
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore()
-  if (user) return <Navigate to="/home" replace />
-  return <>{children}</>
+  const { user } = useAuthStore();
+  if (user) return <Navigate to="/home" replace />;
+  return <>{children}</>;
 }
 
 // Refreshes user data on app load
 function AppInit() {
-  const { user, setUser, token, logout } = useAuthStore()
-  const navigate = useNavigate()
+  const { user, setUser, token, logout } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (!token || !user) return
-    authApi.me()
+    if (!token || !user) return;
+    authApi
+      .me()
       .then(({ data }) => setUser(data.user, token))
-      .catch(() => { logout(); navigate('/auth') })
-  }, [])
+      .catch(() => {
+        logout();
+        navigate("/auth");
+      });
+  }, []);
 
-  return null
+  return null;
 }
 
 export default function App() {
@@ -81,50 +92,85 @@ export default function App() {
         <AppInit />
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/auth"
+            element={
+              <AuthRoute>
+                <AuthPage />
+              </AuthRoute>
+            }
+          />
 
-          <Route path="/auth" element={
-            <AuthRoute><AuthPage /></AuthRoute>
-          } />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <HomePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/home" element={
-            <ProtectedRoute>
-              <Layout><HomePage /></Layout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/pill"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <PillPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/pill" element={
-            <ProtectedRoute>
-              <Layout><PillPage /></Layout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/records"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <RecordsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/records" element={
-            <ProtectedRoute>
-              <Layout><RecordsPage /></Layout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/calendar"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CalendarPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/calendar" element={
-            <ProtectedRoute>
-              <Layout><CalendarPage /></Layout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Layout><ProfilePage /></Layout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/admin" element={
-            <AdminRoute>
-              <Layout><AdminPage /></Layout>
-            </AdminRoute>
-          } />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <Layout>
+                  <AdminPage />
+                </Layout>
+              </AdminRoute>
+            }
+          />
 
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </ToastProvider>
     </BrowserRouter>
-  )
+  );
 }
