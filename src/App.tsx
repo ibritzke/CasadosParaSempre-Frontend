@@ -81,7 +81,6 @@ function AppInit() {
         navigate("/auth");
       });
   }, []);
-
   return null;
 }
 
