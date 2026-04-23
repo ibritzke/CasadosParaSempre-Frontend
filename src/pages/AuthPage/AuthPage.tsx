@@ -243,7 +243,7 @@ export default function AuthPage() {
             <PrimaryBtn onClick={handleLogin} disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}
             </PrimaryBtn>
-            <div style={{ textAlign: "right", marginTop: -8, marginBottom: 8 }}>
+            <div style={{ textAlign: "right", marginTop: 8, marginBottom: 8 }}>
               <button
                 onClick={() => setShowForgot(true)}
                 style={{
