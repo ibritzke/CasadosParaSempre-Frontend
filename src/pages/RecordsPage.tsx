@@ -53,12 +53,16 @@ const Label = styled.label<{ $color: string }>`
 
 const InputEl = styled.input<{ $border: string; $primary: string; $bg: string; $text: string }>`
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 12px 14px;
   border: 1.5px solid ${p => p.$border};
   border-radius: 10px;
   font-size: 14px;
   color: ${p => p.$text};
   background: ${p => p.$bg};
+  appearance: none;
   outline: none;
   transition: border-color 0.2s;
   &:focus { border-color: ${p => p.$primary}; }
@@ -175,10 +179,15 @@ const RecordHow = styled.p<{ $color: string }>`
   margin-top: 4px;
 `
 
-const DeleteBtn = styled.button`
+const ActionBtns = styled.div`
   position: absolute;
   top: 12px;
   right: 12px;
+  display: flex;
+  gap: 4px;
+`
+
+const ActionBtn = styled.button`
   background: none;
   border: none;
   font-size: 16px;
@@ -217,6 +226,15 @@ const FAB = styled.button<{ $color: string }>`
   &:active { transform: scale(0.92); }
 `
 
+const ModalOverlay = styled.div`
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+`
+const ModalCard = styled.div<{ $bg: string }>`
+  background: ${p => p.$bg}; border-radius: 16px; padding: 20px; width: 100%; max-width: 380px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+`
+
 export default function RecordsPage() {
   const { theme } = useAuthStore()
   const { show } = useToast()
@@ -235,6 +253,11 @@ export default function RecordsPage() {
     return now.toISOString().slice(0, 16)
   })
   const [how, setHow] = useState('')
+
+  const [editRecord, setEditRecord] = useState<PillRecord | null>(null)
+  const [editWhat, setEditWhat] = useState('')
+  const [editWhen, setEditWhen] = useState('')
+  const [editHow, setEditHow] = useState('')
 
   const loadData = async () => {
     try {
@@ -274,8 +297,37 @@ export default function RecordsPage() {
     } catch { show('Erro ao remover') }
   }
 
+  const handleEditOpen = (rec: PillRecord) => {
+    setEditRecord(rec)
+    setEditWhat(rec.what)
+    setEditWhen(new Date(rec.when).toISOString().slice(0, 16))
+    setEditHow(rec.how || '')
+  }
+
+  const handleEditSave = async () => {
+    if (!editRecord || !editWhat.trim()) return
+    setSaving(true)
+    try {
+      await pillApi.updateRecord(editRecord.id, {
+        what: editWhat,
+        when: new Date(editWhen).toISOString(),
+        how: editHow.trim() || undefined
+      })
+      show('Registro atualizado! 💕')
+      setEditRecord(null)
+      loadData()
+    } catch { show('Erro ao atualizar') }
+    finally { setSaving(false) }
+  }
+
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setTimeout(() => {
+      const textareas = formRef.current?.getElementsByTagName('textarea')
+      if (textareas && textareas.length > 0) {
+        textareas[0].focus()
+      }
+    }, 400)
   }
 
   const fmtDate = (d: string) => format(new Date(d), "d 'de' MMM, HH:mm", { locale: ptBR })
@@ -377,7 +429,10 @@ export default function RecordsPage() {
                       <RecordDate $color={theme.primary}>📝 {fmtDate(rec.when)}</RecordDate>
                       <RecordText $color={theme.text}>{rec.what}</RecordText>
                       {rec.how && <RecordHow $color={theme.textMuted}>{rec.how}</RecordHow>}
-                      <DeleteBtn onClick={() => handleDelete(rec.id)}>🗑</DeleteBtn>
+                      <ActionBtns>
+                        <ActionBtn onClick={() => handleEditOpen(rec)}>✏️</ActionBtn>
+                        <ActionBtn onClick={() => handleDelete(rec.id)}>🗑</ActionBtn>
+                      </ActionBtns>
                     </RecordItem>
                   ))
                 )}
@@ -388,7 +443,50 @@ export default function RecordsPage() {
       )}
 
       {currentDraw && (
-        <FAB $color={theme.primary} onClick={scrollToForm} title="Novo registro">✏️</FAB>
+        <FAB $color={theme.primary} onClick={scrollToForm} title="Novo registro">➕</FAB>
+      )}
+
+      {/* EDIT MODAL */}
+      {editRecord && (
+        <ModalOverlay onClick={() => setEditRecord(null)}>
+          <ModalCard $bg={theme.white} onClick={e => e.stopPropagation()}>
+            <CardTitle $color={theme.primaryDark}>Editar registro</CardTitle>
+            <FormGroup style={{ marginTop: 14 }}>
+              <Label $color={theme.textMuted}>O que você fez? *</Label>
+              <TextareaEl
+                value={editWhat}
+                onChange={e => setEditWhat(e.target.value)}
+                $border={theme.border} $primary={theme.primary} $bg={theme.cream} $text={theme.text}
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label $color={theme.textMuted}>Quando foi?</Label>
+              <InputEl
+                type="datetime-local"
+                value={editWhen}
+                onChange={e => setEditWhen(e.target.value)}
+                $border={theme.border} $primary={theme.primary} $bg={theme.cream} $text={theme.text}
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label $color={theme.textMuted}>Como foi? (opcional)</Label>
+              <TextareaEl
+                value={editHow}
+                onChange={e => setEditHow(e.target.value)}
+                $border={theme.border} $primary={theme.primary} $bg={theme.cream} $text={theme.text}
+                style={{ minHeight: 70 }}
+              />
+            </FormGroup>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <SaveBtn $color={theme.textMuted} onClick={() => setEditRecord(null)} style={{ background: 'transparent', border: `1px solid ${theme.border}`, color: theme.text }}>
+                Cancelar
+              </SaveBtn>
+              <SaveBtn $color={theme.primary} onClick={handleEditSave} disabled={saving}>
+                {saving ? 'Salvando...' : 'Salvar'}
+              </SaveBtn>
+            </div>
+          </ModalCard>
+        </ModalOverlay>
       )}
     </Page>
   )

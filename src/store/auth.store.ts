@@ -46,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'cps-auth',
-      partialize: (state) => ({ user: state.user, token: state.token }),
+      partialize: (state) => ({ user: state.user, token: state.token, theme: state.theme }),
     }
   )
 )

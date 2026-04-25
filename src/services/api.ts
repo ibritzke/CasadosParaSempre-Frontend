@@ -49,6 +49,8 @@ export const pillApi = {
   getHistory: () => api.get('/pills/history'),
   createRecord: (data: { drawId: string; what: string; when: string; how?: string }) =>
     api.post('/pills/records', data),
+  updateRecord: (id: string, data: { what: string; when: string; how?: string }) =>
+    api.put(`/pills/records/${id}`, data),
   deleteRecord: (id: string) => api.delete(`/pills/records/${id}`),
 }
 

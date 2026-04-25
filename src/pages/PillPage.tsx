@@ -41,7 +41,7 @@ const JarWrapper = styled.div<{ $shaking: boolean }>`
   cursor: pointer;
   filter: drop-shadow(0 8px 24px rgba(0,0,0,0.15));
   transition: transform 0.15s;
-  animation: ${p => p.$shaking ? shake : 'none'} 0.5s ease;
+  animation: ${p => p.$shaking ? shake : 'none'} 0.5s ease infinite;
   &:active { transform: scale(0.95); }
   svg { width: 170px; height: 210px; }
 `
@@ -137,6 +137,7 @@ export default function PillPage() {
   const [loading, setLoading] = useState(true)
   const [shaking, setShaking] = useState(false)
   const [result, setResult] = useState<PillDraw | null>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
 
   useEffect(() => {
     pillApi.getCurrent().then(r => { setDraw(r.data.draw); setLoading(false) }).catch(() => setLoading(false))
@@ -144,9 +145,9 @@ export default function PillPage() {
 
   const handleJarClick = async () => {
     if (draw) { show('Você já tem uma pílula esta semana! 💊'); return }
-    if (shaking) return
+    if (shaking || isDrawing) return
+    setIsDrawing(true)
     setShaking(true)
-    setTimeout(() => setShaking(false), 600)
     setTimeout(async () => {
       try {
         const { data } = await pillApi.draw()
@@ -154,6 +155,9 @@ export default function PillPage() {
       } catch (err: unknown) {
         const e = err as { response?: { data?: { error?: string } } }
         show(e.response?.data?.error || 'Erro ao sortear')
+      } finally {
+        setIsDrawing(false)
+        setShaking(false)
       }
     }, 350)
   }
@@ -183,7 +187,9 @@ export default function PillPage() {
       {!draw ? (
         <>
           <Title $color={theme.primaryDark}>Pílula da Semana</Title>
-          <Sub $color={theme.textMuted}>Toque no pote para sortear sua pílula desta semana</Sub>
+          <Sub $color={theme.textMuted}>
+            {isDrawing ? "Abrindo pílula... aguarde 💕" : "Toque no pote para sortear sua pílula desta semana"}
+          </Sub>
 
           <JarWrapper $shaking={shaking} onClick={handleJarClick}>
             <svg viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
