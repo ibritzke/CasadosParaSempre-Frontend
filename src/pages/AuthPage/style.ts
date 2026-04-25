@@ -3,12 +3,12 @@ import styled, { keyframes } from "styled-components";
 export const fadeIn = keyframes`from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); }`;
 
 export const Screen = styled.div`
-  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
   background: linear-gradient(160deg, #5c1f3e 0%, #8b3a62 55%, #c4709a 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   padding: 32px 24px 40px;
   max-width: 430px;
   margin: 0 auto;
@@ -16,6 +16,7 @@ export const Screen = styled.div`
 
 export const Logo = styled.div`
   text-align: center;
+  margin-top: auto;
   margin-bottom: 40px;
   animation: ${fadeIn} 0.5s ease;
 
@@ -45,6 +46,7 @@ export const AuthCard = styled.div`
   width: 100%;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
   animation: ${fadeIn} 0.5s ease 0.1s both;
+  margin-bottom: auto;
 `;
 
 export const Tabs = styled.div`
