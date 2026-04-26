@@ -8,6 +8,7 @@ import { PillDraw, PillRecord } from '@/types'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import LoadingSpinner, { LoadingOverlay } from '@/components/ui/LoadingSpinner'
+import { shared } from '@/styles/theme'
 
 const fadeUp = keyframes`from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}`
 
@@ -209,7 +210,7 @@ const EmptyState = styled.div`
 const FAB = styled.button<{ $color: string }>`
   position: fixed;
   right: 20px;
-  bottom: 80px;
+  bottom: calc(${shared.navHeight} + 16px);
   width: 52px;
   height: 52px;
   border-radius: 50%;

@@ -58,7 +58,7 @@ export const pillApi = {
 export const calendarApi = {
   getEvents: (month: number, year: number) =>
     api.get('/calendar', { params: { month, year } }),
-  createEvent: (data: { type: string; date: string; note?: string }) =>
+  createEvent: (data: { type: string; date: string; endDate?: string | null; note?: string }) =>
     api.post('/calendar', data),
   updateEvent: (id: string, data: object) => api.patch(`/calendar/${id}`, data),
   deleteEvent: (id: string) => api.delete(`/calendar/${id}`),

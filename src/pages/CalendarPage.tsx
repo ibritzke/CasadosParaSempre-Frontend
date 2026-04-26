@@ -6,9 +6,10 @@ import { calendarApi } from '@/services/api'
 import { useToast } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
 import { CalendarEvent, EventType } from '@/types'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, isWithinInterval, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { LoadingOverlay } from '@/components/ui/LoadingSpinner'
+import { shared } from '@/styles/theme'
 
 const fadeUp = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
 
@@ -56,6 +57,19 @@ const NavBtn = styled.button<{ $bg: string; $color: string }>`
   &:active { filter: brightness(0.9); }
 `
 
+const CycleInfo = styled.div<{ $bg: string; $color: string }>`
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: ${p => p.$bg};
+  border-radius: 20px;
+  font-size: 12px;
+  color: ${p => p.$color};
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+`
+
 const CalGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -74,28 +88,45 @@ const DayHeader = styled.div<{ $color: string }>`
   text-transform: uppercase;
 `
 
-const CalDay = styled.div<{ $today: boolean; $otherMonth: boolean; $primary: string; $light: string }>`
+const CalDay = styled.div<{
+  $today: boolean
+  $otherMonth: boolean
+  $primary: string
+  $light: string
+  $periodColor: string
+  $periodPos: 'start' | 'mid' | 'end' | 'single' | null
+  $isPredicted: boolean
+}>`
   aspect-ratio: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   padding: 3px 2px;
-  border-radius: 10px;
+  border-radius: ${p =>
+    p.$periodPos === 'start' ? '10px 0 0 10px' :
+    p.$periodPos === 'end' ? '0 10px 10px 0' :
+    p.$periodPos === 'mid' ? '0' :
+    '10px'};
   cursor: pointer;
   position: relative;
   transition: background 0.12s;
   min-height: 40px;
-  background: ${p => p.$today ? p.$primary : 'transparent'};
+  background: ${p =>
+    p.$periodPos ? p.$periodColor + (p.$isPredicted ? '40' : '30') :
+    p.$today ? p.$primary : 'transparent'};
   opacity: ${p => p.$otherMonth ? 0.35 : 1};
+  border: ${p => p.$isPredicted && p.$periodPos ? `1px dashed ${p.$periodColor}99` : 'none'};
 
-  &:hover { background: ${p => p.$today ? p.$primary : p.$light}; }
+  &:hover { background: ${p => p.$periodPos ? p.$periodColor + '55' : p.$today ? p.$primary : p.$light}; }
 
   .day-num {
     font-size: 13px;
-    color: ${p => p.$today ? '#fff' : 'inherit'};
+    color: ${p => p.$today ? '#fff' : p.$periodPos ? p.$periodColor : 'inherit'};
     line-height: 1;
-    font-weight: ${p => p.$today ? 600 : 400};
+    font-weight: ${p => p.$today || p.$periodPos ? 600 : 400};
+    position: relative;
+    z-index: 1;
   }
 `
 
@@ -106,6 +137,8 @@ const DotsRow = styled.div`
   justify-content: center;
   margin-top: 3px;
   max-width: 28px;
+  position: relative;
+  z-index: 1;
 `
 
 const Dot = styled.div<{ $color: string }>`
@@ -194,33 +227,76 @@ const EmptyState = styled.div`
   p { font-size: 13px; color: #94A3B8; line-height: 1.6; }
 `
 
-// Event type config
+// Event config — 3 types only
 const EVENT_CONFIG: Record<EventType, { icon: string; label: string; color: string; bg: string }> = {
   SEX:    { icon: '🌹', label: 'Intimidade',   color: '#E87C6B', bg: '#FEF0EE' },
-  PERIOD: { icon: '🌸', label: 'Menstruação',  color: '#C9973A', bg: '#FBF3E4' },
-  CYCLE:  { icon: '🔄', label: 'Ciclo',        color: '#9B7BB5', bg: '#F3EFFA' },
+  PERIOD: { icon: '🌸', label: 'Menstruação',  color: '#D1477A', bg: '#FCE4EE' },
   NOTE:   { icon: '📝', label: 'Nota',         color: '#6BA3BE', bg: '#EEF4F9' },
 }
 
 // Modal styled
 const EventTypeGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   margin-bottom: 18px;
 `
 
 const EventTypeBtn = styled.button<{ $selected: boolean; $border: string; $primary: string; $light: string }>`
-  padding: 14px 10px;
+  padding: 14px 8px;
   border: 2px solid ${p => p.$selected ? p.$primary : p.$border};
   border-radius: 12px;
   background: ${p => p.$selected ? p.$light : '#fafafa'};
   cursor: pointer;
   text-align: center;
   transition: all 0.15s;
-  .icon { font-size: 24px; margin-bottom: 4px; display: block; }
-  span { font-size: 13px; color: #374151; font-family: 'DM Sans', sans-serif; }
+  .icon { font-size: 22px; margin-bottom: 4px; display: block; }
+  span { font-size: 12px; color: #374151; font-family: 'DM Sans', sans-serif; }
   &:active { transform: scale(0.97); }
+`
+
+const DateRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+`
+
+const DateCol = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`
+
+const DateLabel = styled.label<{ $color: string }>`
+  font-size: 11px;
+  font-weight: 500;
+  color: ${p => p.$color};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`
+
+const DateInput = styled.input<{ $border: string; $primary: string }>`
+  padding: 10px 12px;
+  border: 1.5px solid ${p => p.$border};
+  border-radius: 10px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  &:focus { border-color: ${p => p.$primary}; }
+`
+
+const InfoBox = styled.div<{ $bg: string; $color: string }>`
+  background: ${p => p.$bg};
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: ${p => p.$color};
+  margin-bottom: 14px;
+  line-height: 1.5;
 `
 
 const ModalTextarea = styled.textarea<{ $border: string; $primary: string }>`
@@ -278,7 +354,7 @@ const ModalCancelBtn = styled.button`
 const FAB = styled.button<{ $color: string }>`
   position: fixed;
   right: 20px;
-  bottom: 80px;
+  bottom: calc(${shared.navHeight} + 16px);
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -299,6 +375,16 @@ const FAB = styled.button<{ $color: string }>`
 const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const DAYS_PT   = ['D','S','T','Q','Q','S','S']
 
+// Format a Date to "yyyy-MM-dd" for input[type=date]
+function toDateInputValue(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+function parseLocalDate(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d, 12, 0, 0)
+}
+
 export default function CalendarPage() {
   const { theme } = useAuthStore()
   const { show } = useToast()
@@ -306,10 +392,14 @@ export default function CalendarPage() {
   const today = new Date()
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [avgCycleDays, setAvgCycleDays] = useState<number | null>(null)
+  const [nextPeriodDate, setNextPeriodDate] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [selectedType, setSelectedType] = useState<EventType | null>(null)
   const [note, setNote] = useState('')
+  const [periodStart, setPeriodStart] = useState('')
+  const [periodEnd, setPeriodEnd] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -317,6 +407,8 @@ export default function CalendarPage() {
     try {
       const { data } = await calendarApi.getEvents(viewDate.getMonth(), viewDate.getFullYear())
       setEvents(data.events || [])
+      setAvgCycleDays(data.avgCycleDays || null)
+      setNextPeriodDate(data.nextPeriodDate || null)
     } catch { show('Erro ao carregar eventos') }
   }
 
@@ -326,6 +418,8 @@ export default function CalendarPage() {
     setSelectedDay(day)
     setSelectedType(null)
     setNote('')
+    setPeriodStart(toDateInputValue(day))
+    setPeriodEnd(toDateInputValue(day))
     setModalOpen(true)
   }
 
@@ -333,9 +427,22 @@ export default function CalendarPage() {
     if (!selectedType || !selectedDay) { show('Selecione o tipo de evento'); return }
     setSaving(true)
     try {
-      const date = new Date(selectedDay)
-      date.setHours(12, 0, 0, 0)
-      await calendarApi.createEvent({ type: selectedType, date: date.toISOString(), note: note.trim() || undefined })
+      if (selectedType === 'PERIOD') {
+        const startDate = parseLocalDate(periodStart)
+        const endDate = periodEnd ? parseLocalDate(periodEnd) : null
+        if (endDate && endDate < startDate) { show('A data de término não pode ser antes do início'); setSaving(false); return }
+
+        await calendarApi.createEvent({
+          type: 'PERIOD',
+          date: startDate.toISOString(),
+          endDate: endDate ? endDate.toISOString() : null,
+          note: note.trim() || undefined,
+        })
+      } else {
+        const date = new Date(selectedDay)
+        date.setHours(12, 0, 0, 0)
+        await calendarApi.createEvent({ type: selectedType, date: date.toISOString(), note: note.trim() || undefined })
+      }
       setModalOpen(false)
       show('Evento salvo! 📅')
       loadEvents()
@@ -358,20 +465,59 @@ export default function CalendarPage() {
   const firstDay = startOfMonth(viewDate)
   const lastDay = endOfMonth(viewDate)
   const days = eachDayOfInterval({ start: firstDay, end: lastDay })
-  const startOffset = getDay(firstDay) // 0=Sun
+  const startOffset = getDay(firstDay)
 
   const getEventsForDay = (d: Date) =>
-    events.filter(e => isSameDay(new Date(e.date), d))
+    events.filter(e => {
+      if (isSameDay(parseISO(e.date), d)) return true
+      if (e.endDate && !isSameDay(parseISO(e.date), parseISO(e.endDate))) {
+        return isWithinInterval(d, { start: parseISO(e.date), end: parseISO(e.endDate) })
+      }
+      return false
+    })
 
-  // List events for the month (sorted)
+  // Determine period position for a day (for visual range rendering)
+  const getPeriodInfo = (d: Date): { color: string; pos: 'start' | 'mid' | 'end' | 'single' | null; isPredicted: boolean } => {
+    // Check predicted period
+    if (nextPeriodDate && avgCycleDays) {
+      const np = parseISO(nextPeriodDate)
+      // Predict 5-day period
+      const npEnd = new Date(np.getTime() + 4 * 24 * 60 * 60 * 1000)
+      if (isWithinInterval(d, { start: np, end: npEnd })) {
+        const isStart = isSameDay(d, np)
+        const isEnd = isSameDay(d, npEnd)
+        return {
+          color: EVENT_CONFIG.PERIOD.color,
+          pos: isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid',
+          isPredicted: true,
+        }
+      }
+    }
+
+    const periodEvents = events.filter(e => e.type === 'PERIOD')
+    for (const ev of periodEvents) {
+      const start = parseISO(ev.date)
+      const end = ev.endDate ? parseISO(ev.endDate) : start
+
+      if (isWithinInterval(d, { start, end }) || isSameDay(d, start)) {
+        const isStart = isSameDay(d, start)
+        const isEnd = isSameDay(d, end)
+        return {
+          color: EVENT_CONFIG.PERIOD.color,
+          pos: isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid',
+          isPredicted: false,
+        }
+      }
+    }
+    return { color: '', pos: null, isPredicted: false }
+  }
+
   const monthEvents = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-
   const prevMonth = () => setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
   const nextMonth = () => setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))
 
   return (
     <Page $bg={theme.cream}>
-      {/* Loading overlays */}
       {saving && <LoadingOverlay message="Salvando evento..." />}
       {deleting && <LoadingOverlay message="Removendo evento..." />}
 
@@ -382,6 +528,20 @@ export default function CalendarPage() {
           <MonthTitle $color={theme.primaryDark}>{MONTHS_PT[viewDate.getMonth()]} {viewDate.getFullYear()}</MonthTitle>
           <NavBtn $bg={theme.primaryLight} $color={theme.primary} onClick={nextMonth}>›</NavBtn>
         </MonthNav>
+
+        {/* Cycle info */}
+        {avgCycleDays && (
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <CycleInfo $bg="#FCE4EE" $color="#D1477A">
+              🔄 Ciclo médio: {avgCycleDays} dias
+            </CycleInfo>
+            {nextPeriodDate && (
+              <CycleInfo $bg="#FBF3E4" $color="#C9973A">
+                📅 Próx.: {format(parseISO(nextPeriodDate), "d 'de' MMM", { locale: ptBR })} (previsão)
+              </CycleInfo>
+            )}
+          </div>
+        )}
       </CalHeader>
 
       {/* Day headers */}
@@ -391,26 +551,30 @@ export default function CalendarPage() {
 
       {/* Calendar grid */}
       <CalGrid style={{ background: theme.white }}>
-        {/* Empty slots before first day */}
         {Array.from({ length: startOffset }).map((_, i) => <div key={`e${i}`} />)}
 
         {days.map(day => {
           const dayEvents = getEventsForDay(day)
           const isToday = isSameDay(day, today)
           const isOther = !isSameMonth(day, viewDate)
+          const periodInfo = getPeriodInfo(day)
+          const nonPeriodEvents = dayEvents.filter(e => e.type !== 'PERIOD')
           return (
             <CalDay
               key={day.toISOString()}
-              $today={isToday}
+              $today={isToday && !periodInfo.pos}
               $otherMonth={isOther}
               $primary={theme.primary}
               $light={theme.primaryLight}
+              $periodColor={EVENT_CONFIG.PERIOD.color}
+              $periodPos={periodInfo.pos}
+              $isPredicted={periodInfo.isPredicted}
               onClick={() => openModal(day)}
             >
               <span className="day-num">{day.getDate()}</span>
-              {dayEvents.length > 0 && (
+              {nonPeriodEvents.length > 0 && (
                 <DotsRow>
-                  {dayEvents.slice(0, 4).map(e => (
+                  {nonPeriodEvents.slice(0, 3).map(e => (
                     <Dot key={e.id} $color={EVENT_CONFIG[e.type]?.color || '#ccc'} />
                   ))}
                 </DotsRow>
@@ -419,6 +583,18 @@ export default function CalendarPage() {
           )
         })}
       </CalGrid>
+
+      {/* Legend */}
+      <div style={{ padding: '8px 18px', display: 'flex', gap: 12, flexWrap: 'wrap', background: theme.white, borderBottom: `1px solid ${theme.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: theme.textMuted }}>
+          <div style={{ width: 18, height: 10, background: EVENT_CONFIG.PERIOD.color + '55', borderRadius: 3 }} />
+          Menstruação
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: theme.textMuted }}>
+          <div style={{ width: 18, height: 10, background: EVENT_CONFIG.PERIOD.color + '30', border: `1px dashed ${EVENT_CONFIG.PERIOD.color}88`, borderRadius: 3 }} />
+          Previsão
+        </div>
+      </div>
 
       {/* Event list */}
       <ListSection>
@@ -432,7 +608,8 @@ export default function CalendarPage() {
         ) : (
           monthEvents.map(ev => {
             const cfg = EVENT_CONFIG[ev.type]
-            const evDate = new Date(ev.date)
+            const evDate = parseISO(ev.date)
+            const evEndDate = ev.endDate ? parseISO(ev.endDate) : null
             return (
               <ListItem key={ev.id} $bg={theme.white} $border={theme.border}>
                 <ListIcon $bg={cfg.bg}>{cfg.icon}</ListIcon>
@@ -440,7 +617,10 @@ export default function CalendarPage() {
                   <ListTitle $color={theme.text}>{cfg.label}</ListTitle>
                   {ev.note && <ListNote $color={theme.textMuted}>{ev.note}</ListNote>}
                   <ListDate $color={theme.textLight}>
-                    {format(evDate, "d 'de' MMMM", { locale: ptBR })}
+                    {ev.type === 'PERIOD' && evEndDate && !isSameDay(evDate, evEndDate)
+                      ? `${format(evDate, "d 'de' MMM", { locale: ptBR })} → ${format(evEndDate, "d 'de' MMM", { locale: ptBR })}`
+                      : format(evDate, "d 'de' MMMM", { locale: ptBR })
+                    }
                   </ListDate>
                 </ListInfo>
                 <DeleteListBtn onClick={() => handleDelete(ev.id)}>🗑</DeleteListBtn>
@@ -450,7 +630,7 @@ export default function CalendarPage() {
         )}
       </ListSection>
 
-      {/* FAB */}
+      {/* FAB — positioned above nav bar */}
       <FAB $color={theme.primary} onClick={() => openModal(today)}>+</FAB>
 
       {/* Add Event Modal */}
@@ -476,8 +656,40 @@ export default function CalendarPage() {
           ))}
         </EventTypeGrid>
 
+        {/* Period range picker */}
+        {selectedType === 'PERIOD' && (
+          <>
+            <InfoBox $bg="#FCE4EE" $color="#D1477A">
+              🌸 Selecione o <strong>início</strong> e o <strong>término</strong> da menstruação. O ciclo será calculado automaticamente!
+            </InfoBox>
+            <DateRow>
+              <DateCol>
+                <DateLabel $color={theme.textMuted}>Início *</DateLabel>
+                <DateInput
+                  type="date"
+                  value={periodStart}
+                  onChange={e => setPeriodStart(e.target.value)}
+                  $border={theme.border}
+                  $primary={theme.primary}
+                />
+              </DateCol>
+              <DateCol>
+                <DateLabel $color={theme.textMuted}>Término</DateLabel>
+                <DateInput
+                  type="date"
+                  value={periodEnd}
+                  min={periodStart}
+                  onChange={e => setPeriodEnd(e.target.value)}
+                  $border={theme.border}
+                  $primary={theme.primary}
+                />
+              </DateCol>
+            </DateRow>
+          </>
+        )}
+
         <ModalTextarea
-          placeholder="Observação (opcional)..."
+          placeholder={selectedType === 'PERIOD' ? 'Observação (cólicas, fluxo, humor...)' : 'Observação (opcional)...'}
           value={note}
           onChange={e => setNote(e.target.value)}
           $border={theme.border}
