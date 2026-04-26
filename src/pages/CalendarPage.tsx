@@ -128,6 +128,12 @@ const CalDay = styled.div<{
     position: relative;
     z-index: 1;
   }
+  
+  .fertile-indicator {
+    font-size: 8px;
+    margin-top: -3px;
+    opacity: 0.8;
+  }
 `
 
 const DotsRow = styled.div`
@@ -227,17 +233,18 @@ const EmptyState = styled.div`
   p { font-size: 13px; color: #94A3B8; line-height: 1.6; }
 `
 
-// Event config — 3 types only
+// Event config
 const EVENT_CONFIG: Record<EventType, { icon: string; label: string; color: string; bg: string }> = {
-  SEX:    { icon: '🌹', label: 'Intimidade',   color: '#E87C6B', bg: '#FEF0EE' },
-  PERIOD: { icon: '🌸', label: 'Menstruação',  color: '#D1477A', bg: '#FCE4EE' },
-  NOTE:   { icon: '📝', label: 'Nota',         color: '#6BA3BE', bg: '#EEF4F9' },
+  SEX:         { icon: '🔥', label: 'Intimidade',     color: '#E87C6B', bg: '#FEF0EE' },
+  PERIOD:      { icon: '🌸', label: 'Menstruação',    color: '#D1477A', bg: '#FCE4EE' },
+  CELEBRATION: { icon: '🥂', label: 'Comemorativo',   color: '#C9973A', bg: '#FBF3E4' },
+  NOTE:        { icon: '📝', label: 'Nota',           color: '#6BA3BE', bg: '#EEF4F9' },
 }
 
 // Modal styled
 const EventTypeGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-bottom: 18px;
 `
@@ -286,6 +293,20 @@ const DateInput = styled.input<{ $border: string; $primary: string }>`
   outline: none;
   transition: border-color 0.2s;
   width: 100%;
+  &:focus { border-color: ${p => p.$primary}; }
+`
+
+const SelectInput = styled.select<{ $border: string; $primary: string }>`
+  padding: 10px 12px;
+  border: 1.5px solid ${p => p.$border};
+  border-radius: 10px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  margin-bottom: 14px;
   &:focus { border-color: ${p => p.$primary}; }
 `
 
@@ -405,12 +426,14 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [avgCycleDays, setAvgCycleDays] = useState<number | null>(null)
   const [nextPeriodDate, setNextPeriodDate] = useState<string | null>(null)
+  const [fertileWindow, setFertileWindow] = useState<{start: string, end: string} | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [selectedType, setSelectedType] = useState<EventType | null>(null)
   const [note, setNote] = useState('')
   const [periodStart, setPeriodStart] = useState('')
   const [periodEnd, setPeriodEnd] = useState('')
+  const [recurrence, setRecurrence] = useState<'none'|'monthly'|'annual'>('none')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -420,6 +443,7 @@ export default function CalendarPage() {
       setEvents(data.events || [])
       setAvgCycleDays(data.avgCycleDays || null)
       setNextPeriodDate(data.nextPeriodDate || null)
+      setFertileWindow(data.fertileWindow || null)
     } catch { show('Erro ao carregar eventos') }
   }
 
@@ -429,6 +453,7 @@ export default function CalendarPage() {
     setSelectedDay(day)
     setSelectedType(null)
     setNote('')
+    setRecurrence('none')
     setPeriodStart(toDateInputValue(day))
     setPeriodEnd(toDateInputValue(day))
     setModalOpen(true)
@@ -452,7 +477,7 @@ export default function CalendarPage() {
       } else {
         const date = new Date(selectedDay)
         date.setHours(12, 0, 0, 0)
-        await calendarApi.createEvent({ type: selectedType, date: date.toISOString(), note: note.trim() || undefined })
+        await calendarApi.createEvent({ type: selectedType, date: date.toISOString(), note: note.trim() || undefined, recurrence: selectedType === 'CELEBRATION' ? recurrence : 'none' })
       }
       setModalOpen(false)
       show('Evento salvo! 📅')
@@ -487,12 +512,18 @@ export default function CalendarPage() {
       return false
     })
 
-  // Determine period position for a day (for visual range rendering)
-  const getPeriodInfo = (d: Date): { color: string; pos: 'start' | 'mid' | 'end' | 'single' | null; isPredicted: boolean } => {
-    // Check predicted period
+// Determine period position for a day (for visual range rendering)
+  const getPeriodInfo = (d: Date): { color: string; pos: 'start' | 'mid' | 'end' | 'single' | null; isPredicted: boolean; isFertile: boolean } => {
+    let isFertile = false;
+
+    if (fertileWindow) {
+      if (isWithinInterval(d, { start: parseISO(fertileWindow.start), end: parseISO(fertileWindow.end) })) {
+        isFertile = true;
+      }
+    }
+
     if (nextPeriodDate && avgCycleDays) {
       const np = parseISO(nextPeriodDate)
-      // Predict 5-day period
       const npEnd = new Date(np.getTime() + 4 * 24 * 60 * 60 * 1000)
       if (isWithinInterval(d, { start: np, end: npEnd })) {
         const isStart = isSameDay(d, np)
@@ -501,6 +532,7 @@ export default function CalendarPage() {
           color: EVENT_CONFIG.PERIOD.color,
           pos: isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid',
           isPredicted: true,
+          isFertile,
         }
       }
     }
@@ -517,10 +549,11 @@ export default function CalendarPage() {
           color: EVENT_CONFIG.PERIOD.color,
           pos: isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid',
           isPredicted: false,
+          isFertile,
         }
       }
     }
-    return { color: '', pos: null, isPredicted: false }
+    return { color: '', pos: null, isPredicted: false, isFertile }
   }
 
   const monthEvents = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -583,6 +616,7 @@ export default function CalendarPage() {
               onClick={() => openModal(day)}
             >
               <span className="day-num">{day.getDate()}</span>
+              {periodInfo.isFertile && <span className="fertile-indicator">✨</span>}
               {nonPeriodEvents.length > 0 && (
                 <DotsRow>
                   {nonPeriodEvents.slice(0, 3).map(e => (
@@ -603,7 +637,10 @@ export default function CalendarPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: theme.textMuted }}>
           <div style={{ width: 18, height: 10, background: EVENT_CONFIG.PERIOD.color + '30', border: `1px dashed ${EVENT_CONFIG.PERIOD.color}88`, borderRadius: 3 }} />
-          Previsão
+          Mens. (Previsão)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: theme.textMuted }}>
+          <span>✨</span> Período Fértil
         </div>
       </div>
 
@@ -625,7 +662,11 @@ export default function CalendarPage() {
               <ListItem key={ev.id} $bg={theme.white} $border={theme.border}>
                 <ListIcon $bg={cfg.bg}>{cfg.icon}</ListIcon>
                 <ListInfo>
-                  <ListTitle $color={theme.text}>{cfg.label}</ListTitle>
+                  <ListTitle $color={theme.text}>
+                    {cfg.label}
+                    {ev.type === 'CELEBRATION' && ev.recurrence === 'annual' && <span style={{ fontSize: 10, background: '#FCE4EE', color: '#D1477A', padding: '2px 6px', borderRadius: 4, marginLeft: 6 }}>Anual</span>}
+                    {ev.type === 'CELEBRATION' && ev.recurrence === 'monthly' && <span style={{ fontSize: 10, background: '#FCE4EE', color: '#D1477A', padding: '2px 6px', borderRadius: 4, marginLeft: 6 }}>Mensal</span>}
+                  </ListTitle>
                   {ev.note && <ListNote $color={theme.textMuted}>{ev.note}</ListNote>}
                   <ListDate $color={theme.textLight}>
                     {ev.type === 'PERIOD' && evEndDate && !isSameDay(evDate, evEndDate)
@@ -673,7 +714,7 @@ export default function CalendarPage() {
         {selectedType === 'PERIOD' && (
           <>
             <InfoBox $bg="#FCE4EE" $color="#D1477A">
-              🌸 Selecione o <strong>início</strong> e o <strong>término</strong> da menstruação. O ciclo será calculado automaticamente!
+              🌸 Registre apenas o <strong>início</strong> e, caso já tenha acabado, marque o <strong>término</strong>.
             </InfoBox>
             <DateRow>
               <DateCol>
@@ -687,7 +728,7 @@ export default function CalendarPage() {
                 />
               </DateCol>
               <DateCol>
-                <DateLabel $color={theme.textMuted}>Término</DateLabel>
+                <DateLabel $color={theme.textMuted}>Término (opcional)</DateLabel>
                 <DateInput
                   type="date"
                   value={periodEnd}
@@ -699,6 +740,17 @@ export default function CalendarPage() {
               </DateCol>
             </DateRow>
           </>
+        )}
+
+        {selectedType === 'CELEBRATION' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <DateLabel $color={theme.textMuted}>Repetição</DateLabel>
+            <SelectInput value={recurrence} onChange={e => setRecurrence(e.target.value as any)} $border={theme.border} $primary={theme.primary}>
+              <option value="none">Não repetir</option>
+              <option value="monthly">Todo mês (Mensversário)</option>
+              <option value="annual">Todo ano (Aniversário, Bodas)</option>
+            </SelectInput>
+          </div>
         )}
 
         <ModalTextarea

@@ -1,7 +1,7 @@
 // src/types/index.ts
 
 export type UserRole = 'HUSBAND' | 'WIFE'
-export type EventType = 'SEX' | 'PERIOD' | 'NOTE'
+export type EventType = 'SEX' | 'PERIOD' | 'NOTE' | 'CELEBRATION'
 
 export interface User {
   id: string
@@ -51,6 +51,7 @@ export interface CalendarEvent {
   type: EventType
   date: string
   endDate?: string | null
+  recurrence?: 'none' | 'monthly' | 'annual'
   note?: string
   createdAt: string
 }
