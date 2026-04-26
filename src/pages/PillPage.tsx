@@ -127,9 +127,8 @@ function getWeekNumber() {
   return 1 + Math.round(((d.getTime() - w.getTime()) / 86400000 - 3 + (w.getDay() + 6) % 7) / 7)
 }
 
-function daysLeft() {
-  const day = new Date().getDay()
-  return day === 1 ? 7 : (8 - day) % 7
+function daysLeft(expiresAt: string) {
+  return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
 }
 
 export default function PillPage() {
@@ -189,8 +188,8 @@ export default function PillPage() {
   )
 
   const pct = draw ? Math.min(100, Math.round((Date.now() - new Date(draw.drawnAt).getTime()) / (7 * 24 * 60 * 60 * 1000) * 100)) : 0
-  const days = daysLeft()
-  const week = getWeekNumber()
+  const days = draw ? daysLeft(draw.expiresAt) : 0
+  const week = draw?.weekNumber || getWeekNumber()
 
   return (
     <Page $bg={theme.cream}>
@@ -247,11 +246,13 @@ export default function PillPage() {
             </ProgressBar>
           </CurrentCard>
 
-          <BtnRow style={{ marginTop: 20 }}>
-            <Btn $variant="outline" $color={theme.primary} $light={theme.primaryLight} onClick={handleCancel} disabled={isCancelling}>
-              {isCancelling ? 'Cancelando...' : 'Cancelar pílula desta semana'}
-            </Btn>
-          </BtnRow>
+          {(draw.records && draw.records.length > 0) && (
+            <BtnRow style={{ marginTop: 20 }}>
+              <Btn $variant="outline" $color={theme.primary} $light={theme.primaryLight} onClick={handleCancel} disabled={isCancelling}>
+                {isCancelling ? 'Trocando...' : 'Desafio Concluído! Sortear nova pílula'}
+              </Btn>
+            </BtnRow>
+          )}
         </>
       )}
 
