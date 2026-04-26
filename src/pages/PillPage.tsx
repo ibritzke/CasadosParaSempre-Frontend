@@ -194,8 +194,8 @@ export default function PillPage() {
 
   return (
     <Page $bg={theme.cream}>
-      {/* Drawing overlay */}
-      {isDrawing && <LoadingOverlay message="Sorteando sua pílula... 💕" />}
+      {/* Drawing overlay removed to show animation */}
+
       {/* Cancelling overlay */}
       {isCancelling && <LoadingOverlay message="Cancelando pílula..." />}
 

@@ -351,10 +351,21 @@ const ModalCancelBtn = styled.button`
   &:active { opacity: 0.85; }
 `
 
-const FAB = styled.button<{ $color: string }>`
+const FABWrapper = styled.div`
   position: fixed;
-  right: 20px;
   bottom: calc(${shared.navHeight} + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  pointer-events: none;
+  z-index: 50;
+`
+
+const FAB = styled.button<{ $color: string }>`
+  position: absolute;
+  right: 20px;
+  bottom: 0;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -367,7 +378,7 @@ const FAB = styled.button<{ $color: string }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  pointer-events: auto;
   transition: transform 0.2s;
   &:active { transform: scale(0.92); }
 `
@@ -630,8 +641,10 @@ export default function CalendarPage() {
         )}
       </ListSection>
 
-      {/* FAB — positioned above nav bar */}
-      <FAB $color={theme.primary} onClick={() => openModal(today)}>+</FAB>
+      {/* FAB — positioned securely above nav bar & constrained to 430px */}
+      <FABWrapper>
+        <FAB $color={theme.primary} onClick={() => openModal(today)}>+</FAB>
+      </FABWrapper>
 
       {/* Add Event Modal */}
       <Modal

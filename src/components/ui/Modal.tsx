@@ -25,6 +25,8 @@ const Sheet = styled.div<{ $theme?: AppTheme }>`
   border-radius: 24px 24px 0 0;
   padding: 24px 20px 36px;
   width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
   max-height: 90vh;
   overflow-y: auto;
   animation: ${slideUp} 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
