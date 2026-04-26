@@ -1,10 +1,10 @@
-// src/pages/HomePage.tsx
 import React, { useEffect, useState } from 'react'
 import styled, { keyframes } from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { pillApi } from '@/services/api'
 import { PillDraw } from '@/types'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
 const fadeUp = keyframes`from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); }`
 
@@ -172,13 +172,21 @@ export default function HomePage() {
   const navigate = useNavigate()
   const [currentDraw, setCurrentDraw] = useState<PillDraw | null>(null)
   const [history, setHistory] = useState<PillDraw[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    pillApi.getCurrent().then(r => setCurrentDraw(r.data.draw)).catch(() => {})
-    pillApi.getHistory().then(r => setHistory(r.data.draws || [])).catch(() => {})
+    Promise.all([
+      pillApi.getCurrent().then(r => setCurrentDraw(r.data.draw)).catch(() => {}),
+      pillApi.getHistory().then(r => setHistory(r.data.draws || [])).catch(() => {})
+    ]).finally(() => setLoading(false))
   }, [])
 
   if (!user) return null
+  if (loading) return (
+    <Page $bg={theme.cream}>
+      <LoadingSpinner message="Carregando..." fullPage />
+    </Page>
+  )
 
   const firstName = user.name.split(' ')[0]
   const hour = new Date().getHours()

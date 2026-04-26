@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast'
 import { PillDraw, PillRecord } from '@/types'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import LoadingSpinner, { LoadingOverlay } from '@/components/ui/LoadingSpinner'
 
 const fadeUp = keyframes`from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}`
 
@@ -244,6 +245,7 @@ export default function RecordsPage() {
   const [history, setHistory] = useState<PillDraw[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [expandedDraw, setExpandedDraw] = useState<string | null>(null)
 
   const [what, setWhat] = useState('')
@@ -290,11 +292,13 @@ export default function RecordsPage() {
 
   const handleDelete = async (recordId: string) => {
     if (!window.confirm('Remover este registro?')) return
+    setDeleting(recordId)
     try {
       await pillApi.deleteRecord(recordId)
       show('Registro removido')
       loadData()
     } catch { show('Erro ao remover') }
+    finally { setDeleting(null) }
   }
 
   const handleEditOpen = (rec: PillRecord) => {
@@ -332,10 +336,19 @@ export default function RecordsPage() {
 
   const fmtDate = (d: string) => format(new Date(d), "d 'de' MMM, HH:mm", { locale: ptBR })
 
-  if (loading) return <Page $bg={theme.cream}><p style={{ color: theme.textMuted, padding: 20 }}>Carregando...</p></Page>
+  if (loading) return (
+    <Page $bg={theme.cream}>
+      <LoadingSpinner message="Carregando registros..." fullPage showIcon />
+    </Page>
+  )
 
   return (
     <Page $bg={theme.cream}>
+      {/* Saving overlay */}
+      {saving && <LoadingOverlay message="Salvando registro..." />}
+      {/* Deleting overlay */}
+      {deleting && <LoadingOverlay message="Removendo registro..." />}
+
       {/* FORM */}
       {currentDraw && (
         <div ref={formRef}>
@@ -431,7 +444,9 @@ export default function RecordsPage() {
                       {rec.how && <RecordHow $color={theme.textMuted}>{rec.how}</RecordHow>}
                       <ActionBtns>
                         <ActionBtn onClick={() => handleEditOpen(rec)}>✏️</ActionBtn>
-                        <ActionBtn onClick={() => handleDelete(rec.id)}>🗑</ActionBtn>
+                        <ActionBtn onClick={() => handleDelete(rec.id)} disabled={deleting === rec.id}>
+                          {deleting === rec.id ? '⏳' : '🗑'}
+                        </ActionBtn>
                       </ActionBtns>
                     </RecordItem>
                   ))

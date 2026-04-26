@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { pillApi } from '@/services/api'
 import { useToast } from '@/components/ui/Toast'
 import { PillDraw } from '@/types'
+import LoadingSpinner, { LoadingOverlay } from '@/components/ui/LoadingSpinner'
 
 const fadeUp = keyframes`from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); }`
 const shake = keyframes`0%,100%{transform:rotate(0)} 20%{transform:rotate(-8deg)} 40%{transform:rotate(8deg)} 60%{transform:rotate(-5deg)} 80%{transform:rotate(5deg)}`
@@ -96,6 +97,7 @@ const Btn = styled.button<{ $variant: 'primary'|'outline'|'danger'; $color: stri
          p.$variant === 'outline' ? `background:transparent;color:${p.$color};border:1.5px solid ${p.$color};` :
          `background:#FEE2E2;color:#DC2626;border:none;`}
   &:active { opacity: 0.85; transform: scale(0.98); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
 `
 
 // Result overlay
@@ -138,6 +140,7 @@ export default function PillPage() {
   const [shaking, setShaking] = useState(false)
   const [result, setResult] = useState<PillDraw | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   useEffect(() => {
     pillApi.getCurrent().then(r => { setDraw(r.data.draw); setLoading(false) }).catch(() => setLoading(false))
@@ -151,15 +154,16 @@ export default function PillPage() {
     setTimeout(async () => {
       try {
         const { data } = await pillApi.draw()
+        setShaking(false)
         setResult(data.draw)
       } catch (err: unknown) {
+        setShaking(false)
         const e = err as { response?: { data?: { error?: string } } }
         show(e.response?.data?.error || 'Erro ao sortear')
       } finally {
         setIsDrawing(false)
-        setShaking(false)
       }
-    }, 350)
+    }, 800)
   }
 
   const acceptResult = () => {
@@ -169,14 +173,20 @@ export default function PillPage() {
   const handleCancel = async () => {
     if (!draw) return
     if (!window.confirm('Tem certeza que deseja cancelar sua pílula desta semana?')) return
+    setIsCancelling(true)
     try {
       await pillApi.cancel(draw.id)
       setDraw(null)
       show('Pílula cancelada.')
     } catch { show('Erro ao cancelar') }
+    finally { setIsCancelling(false) }
   }
 
-  if (loading) return <Page $bg={theme.cream}><p style={{ color: theme.textMuted }}>Carregando...</p></Page>
+  if (loading) return (
+    <Page $bg={theme.cream}>
+      <LoadingSpinner message="Carregando pílula..." fullPage showIcon />
+    </Page>
+  )
 
   const pct = draw ? Math.min(100, Math.round((Date.now() - new Date(draw.drawnAt).getTime()) / (7 * 24 * 60 * 60 * 1000) * 100)) : 0
   const days = daysLeft()
@@ -184,6 +194,11 @@ export default function PillPage() {
 
   return (
     <Page $bg={theme.cream}>
+      {/* Drawing overlay */}
+      {isDrawing && <LoadingOverlay message="Sorteando sua pílula... 💕" />}
+      {/* Cancelling overlay */}
+      {isCancelling && <LoadingOverlay message="Cancelando pílula..." />}
+
       {!draw ? (
         <>
           <Title $color={theme.primaryDark}>Pílula da Semana</Title>
@@ -233,8 +248,8 @@ export default function PillPage() {
           </CurrentCard>
 
           <BtnRow style={{ marginTop: 20 }}>
-            <Btn $variant="outline" $color={theme.primary} $light={theme.primaryLight} onClick={handleCancel}>
-              Cancelar pílula desta semana
+            <Btn $variant="outline" $color={theme.primary} $light={theme.primaryLight} onClick={handleCancel} disabled={isCancelling}>
+              {isCancelling ? 'Cancelando...' : 'Cancelar pílula desta semana'}
             </Btn>
           </BtnRow>
         </>
@@ -256,10 +271,6 @@ export default function PillPage() {
             <button onClick={acceptResult} style={{ display:'block', width:'100%', padding:14, background:theme.primary, color:'#fff', border:'none', borderRadius:10, fontSize:15, fontWeight:500, cursor:'pointer', marginBottom:10 }}>
               Aceitar e fechar 💕
             </button>
-           {/* cancelar e sair */}
-            {/* <button onClick={() => setResult(null)} style={{ display:'block', width:'100%', padding:12, background:'transparent', color:theme.primary, border:`1.5px solid ${theme.primary}`, borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer' }}>
-              Fechar
-            </button> */}
           </ResultCard>
         </Overlay>
       )}

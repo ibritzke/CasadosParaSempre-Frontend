@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { CalendarEvent, EventType } from '@/types'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { LoadingOverlay } from '@/components/ui/LoadingSpinner'
 
 const fadeUp = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
 
@@ -310,6 +311,7 @@ export default function CalendarPage() {
   const [selectedType, setSelectedType] = useState<EventType | null>(null)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const loadEvents = async () => {
     try {
@@ -343,11 +345,13 @@ export default function CalendarPage() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Remover este evento?')) return
+    setDeleting(true)
     try {
       await calendarApi.deleteEvent(id)
       show('Evento removido')
       loadEvents()
     } catch { show('Erro ao remover') }
+    finally { setDeleting(false) }
   }
 
   // Calendar days
@@ -367,6 +371,10 @@ export default function CalendarPage() {
 
   return (
     <Page $bg={theme.cream}>
+      {/* Loading overlays */}
+      {saving && <LoadingOverlay message="Salvando evento..." />}
+      {deleting && <LoadingOverlay message="Removendo evento..." />}
+
       {/* Calendar Header */}
       <CalHeader $bg={theme.white} $border={theme.border}>
         <MonthNav>
