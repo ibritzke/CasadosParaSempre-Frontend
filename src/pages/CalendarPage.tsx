@@ -425,9 +425,10 @@ export default function CalendarPage() {
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [avgCycleDays, setAvgCycleDays] = useState<number | null>(null)
-  const [nextPeriodDate, setNextPeriodDate] = useState<string | null>(null)
-  const [fertileWindow, setFertileWindow] = useState<{start: string, end: string} | null>(null)
+  const [predictedPeriods, setPredictedPeriods] = useState<string[]>([])
+  const [fertileWindows, setFertileWindows] = useState<{start: string, end: string}[]>([])
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [selectedType, setSelectedType] = useState<EventType | null>(null)
   const [note, setNote] = useState('')
@@ -436,26 +437,41 @@ export default function CalendarPage() {
   const [recurrence, setRecurrence] = useState<'none'|'monthly'|'annual'>('none')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pageLoading, setPageLoading] = useState(false)
 
   const loadEvents = async () => {
+    setPageLoading(true)
     try {
       const { data } = await calendarApi.getEvents(viewDate.getMonth(), viewDate.getFullYear())
       setEvents(data.events || [])
       setAvgCycleDays(data.avgCycleDays || null)
-      setNextPeriodDate(data.nextPeriodDate || null)
-      setFertileWindow(data.fertileWindow || null)
+      setPredictedPeriods(data.predictedPeriods || [])
+      setFertileWindows(data.fertileWindows || [])
     } catch { show('Erro ao carregar eventos') }
+    finally { setPageLoading(false) }
   }
 
   useEffect(() => { loadEvents() }, [viewDate])
 
   const openModal = (day: Date) => {
+    setEditingEventId(null)
     setSelectedDay(day)
     setSelectedType(null)
     setNote('')
     setRecurrence('none')
     setPeriodStart(toDateInputValue(day))
-    setPeriodEnd(toDateInputValue(day))
+    setPeriodEnd('')
+    setModalOpen(true)
+  }
+
+  const openEditModal = (ev: CalendarEvent) => {
+    setEditingEventId(ev.id)
+    setSelectedDay(parseISO(ev.date))
+    setSelectedType(ev.type)
+    setNote(ev.note || '')
+    setRecurrence(ev.recurrence || 'none')
+    setPeriodStart(toDateInputValue(parseISO(ev.date)))
+    setPeriodEnd(ev.endDate ? toDateInputValue(parseISO(ev.endDate)) : '')
     setModalOpen(true)
   }
 
@@ -468,16 +484,29 @@ export default function CalendarPage() {
         const endDate = periodEnd ? parseLocalDate(periodEnd) : null
         if (endDate && endDate < startDate) { show('A data de término não pode ser antes do início'); setSaving(false); return }
 
-        await calendarApi.createEvent({
-          type: 'PERIOD',
-          date: startDate.toISOString(),
-          endDate: endDate ? endDate.toISOString() : null,
-          note: note.trim() || undefined,
-        })
+        if (editingEventId) {
+          await calendarApi.updateEvent(editingEventId, {
+            type: 'PERIOD',
+            date: startDate.toISOString(),
+            endDate: endDate ? endDate.toISOString() : null,
+            note: note.trim() || undefined,
+          })
+        } else {
+          await calendarApi.createEvent({
+            type: 'PERIOD',
+            date: startDate.toISOString(),
+            endDate: endDate ? endDate.toISOString() : null,
+            note: note.trim() || undefined,
+          })
+        }
       } else {
         const date = new Date(selectedDay)
         date.setHours(12, 0, 0, 0)
-        await calendarApi.createEvent({ type: selectedType, date: date.toISOString(), note: note.trim() || undefined, recurrence: selectedType === 'CELEBRATION' ? recurrence : 'none' })
+        if (editingEventId) {
+          await calendarApi.updateEvent(editingEventId, { type: selectedType, date: date.toISOString(), note: note.trim() || undefined, recurrence: selectedType === 'CELEBRATION' ? recurrence : 'none' })
+        } else {
+          await calendarApi.createEvent({ type: selectedType, date: date.toISOString(), note: note.trim() || undefined, recurrence: selectedType === 'CELEBRATION' ? recurrence : 'none' })
+        }
       }
       setModalOpen(false)
       show('Evento salvo! 📅')
@@ -516,24 +545,26 @@ export default function CalendarPage() {
   const getPeriodInfo = (d: Date): { color: string; pos: 'start' | 'mid' | 'end' | 'single' | null; isPredicted: boolean; isFertile: boolean } => {
     let isFertile = false;
 
-    if (fertileWindow) {
-      if (isWithinInterval(d, { start: parseISO(fertileWindow.start), end: parseISO(fertileWindow.end) })) {
+    for (const fw of fertileWindows) {
+      if (isWithinInterval(d, { start: parseISO(fw.start), end: parseISO(fw.end) })) {
         isFertile = true;
+        break;
       }
     }
 
-    if (nextPeriodDate && avgCycleDays) {
-      const np = parseISO(nextPeriodDate)
-      const npEnd = new Date(np.getTime() + 4 * 24 * 60 * 60 * 1000)
+    // Check predicted periods
+    for (const pp of predictedPeriods) {
+      const np = parseISO(pp);
+      const npEnd = new Date(np.getTime() + 4 * 24 * 60 * 60 * 1000); // 5 days
       if (isWithinInterval(d, { start: np, end: npEnd })) {
-        const isStart = isSameDay(d, np)
-        const isEnd = isSameDay(d, npEnd)
+        const isStart = isSameDay(d, np);
+        const isEnd = isSameDay(d, npEnd);
         return {
           color: EVENT_CONFIG.PERIOD.color,
           pos: isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid',
           isPredicted: true,
           isFertile,
-        }
+        };
       }
     }
 
@@ -562,6 +593,7 @@ export default function CalendarPage() {
 
   return (
     <Page $bg={theme.cream}>
+      {pageLoading && <LoadingOverlay message="Carregando calendário..." />}
       {saving && <LoadingOverlay message="Salvando evento..." />}
       {deleting && <LoadingOverlay message="Removendo evento..." />}
 
@@ -579,9 +611,9 @@ export default function CalendarPage() {
             <CycleInfo $bg="#FCE4EE" $color="#D1477A">
               🔄 Ciclo médio: {avgCycleDays} dias
             </CycleInfo>
-            {nextPeriodDate && (
+            {predictedPeriods.length > 0 && (
               <CycleInfo $bg="#FBF3E4" $color="#C9973A">
-                📅 Próx.: {format(parseISO(nextPeriodDate), "d 'de' MMM", { locale: ptBR })} (previsão)
+                📅 Próx.: {format(parseISO(predictedPeriods[0]), "d 'de' MMM", { locale: ptBR })} (previsão)
               </CycleInfo>
             )}
           </div>
@@ -675,7 +707,10 @@ export default function CalendarPage() {
                     }
                   </ListDate>
                 </ListInfo>
-                <DeleteListBtn onClick={() => handleDelete(ev.id)}>🗑</DeleteListBtn>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <DeleteListBtn onClick={() => openEditModal(ev)}>✏️</DeleteListBtn>
+                  <DeleteListBtn onClick={() => handleDelete(ev.id)}>🗑</DeleteListBtn>
+                </div>
               </ListItem>
             )
           })
@@ -728,7 +763,10 @@ export default function CalendarPage() {
                 />
               </DateCol>
               <DateCol>
-                <DateLabel $color={theme.textMuted}>Término (opcional)</DateLabel>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <DateLabel $color={theme.textMuted}>Término</DateLabel>
+                  {periodEnd && <button type="button" onClick={() => setPeriodEnd('')} style={{ background: 'none', border: 'none', color: theme.primary, fontSize: 10, padding: 0, cursor: 'pointer' }}>Limpar</button>}
+                </div>
                 <DateInput
                   type="date"
                   value={periodEnd}

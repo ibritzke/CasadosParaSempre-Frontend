@@ -207,38 +207,6 @@ const EmptyState = styled.div`
   p { font-size: 14px; color: #94A3B8; line-height: 1.6; }
 `
 
-const FABWrapper = styled.div`
-  position: fixed;
-  bottom: calc(${shared.navHeight} + 16px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 430px;
-  pointer-events: none;
-  z-index: 50;
-`
-
-const FAB = styled.button<{ $color: string }>`
-  position: absolute;
-  right: 20px;
-  bottom: 0;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: ${p => p.$color};
-  color: #fff;
-  font-size: 22px;
-  border: none;
-  box-shadow: 0 6px 18px ${p => p.$color}55;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-  transition: transform 0.2s;
-  &:active { transform: scale(0.92); }
-`
-
 const ModalOverlay = styled.div`
   position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999;
   display: flex; align-items: center; justify-content: center; padding: 20px;
@@ -469,11 +437,7 @@ export default function RecordsPage() {
         ))
       )}
 
-      {currentDraw && (
-        <FABWrapper>
-          <FAB $color={theme.primary} onClick={scrollToForm} title="Novo registro">➕</FAB>
-        </FABWrapper>
-      )}
+      {/* FAB removed as requested */}
 
       {/* EDIT MODAL */}
       {editRecord && (

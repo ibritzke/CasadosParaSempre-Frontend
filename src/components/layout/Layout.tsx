@@ -90,7 +90,6 @@ const NAV_ITEMS = [
   { path: '/pill', label: 'Pílula', icon: '💊' },
   { path: '/records', label: 'Registros', icon: '📖' },
   { path: '/calendar', label: 'Calendário', icon: '📅' },
-  { path: '/profile', label: 'Perfil', icon: '👤' },
 ]
 
 const SUBTITLES: Record<string, string> = {
