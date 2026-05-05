@@ -97,6 +97,18 @@ const Paragraph = styled.p<{ $color: string }>`
   margin-bottom: 14px;
 `
 
+const VerseText = styled.div<{ $bg: string; $color: string; $border: string }>`
+  background: ${p => p.$bg};
+  color: ${p => p.$color};
+  border-left: 4px solid ${p => p.$border};
+  padding: 16px;
+  border-radius: 8px;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+`
+
 const CompleteBtn = styled.button<{ $primary: string; $done: boolean }>`
   width: 100%;
   padding: 16px;
@@ -169,6 +181,12 @@ export default function DevotionalPage() {
         <ReferenceBadge $bg={theme.primaryLight} $color={theme.primary}>
           📖 {dailyDev.versiculo_base}
         </ReferenceBadge>
+
+        {dailyDev.texto_versiculo && (
+          <VerseText $bg={theme.cream} $color={theme.text} $border={theme.primary}>
+            "{dailyDev.texto_versiculo}"
+          </VerseText>
+        )}
 
         <SectionTitle $color={theme.primaryDark}>Meditação</SectionTitle>
         <Paragraph $color={theme.textMuted}>{dailyDev.meditacao}</Paragraph>
