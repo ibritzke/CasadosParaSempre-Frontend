@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { pillApi } from '@/services/api'
 import { PillDraw } from '@/types'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import { Modal } from '@/components/ui/Modal'
 
 import dicasEsposas from '@/components/Dicas/dicas_diarias_esposas.json'
 import dicasMaridos from '@/components/Dicas/dicas_diarias_maridos.json'
@@ -39,7 +40,7 @@ const GreetingCard = styled.div<{ $gradient: string }>`
     opacity: 0.12;
   }
 
-  h2 { font-family: 'Playfair Display', serif; font-size: 21px; font-weight: 400; margin-bottom: 4px; }
+  h2 { font-family: 'DM Sans', sans-serif; font-size: 21px; font-weight: 600; margin-bottom: 4px; letter-spacing: -0.5px; }
   p { font-size: 13px; opacity: 0.8; }
 `
 
@@ -132,6 +133,7 @@ const QuickCard = styled.button<{ $bg: string; $border: string }>`
   cursor: pointer;
   transition: transform 0.15s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  min-width: 0;
   &:active { transform: scale(0.97); }
   .icon { font-size: 26px; margin-bottom: 8px; display: block; }
   h4 { font-size: 14px; font-weight: 500; color: #1e293b; }
@@ -139,8 +141,10 @@ const QuickCard = styled.button<{ $bg: string; $border: string }>`
 `
 
 const SectionTitle = styled.h2<{ $color: string }>`
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
   color: ${p => p.$color};
   margin-bottom: 14px;
 `
@@ -186,6 +190,7 @@ export default function HomePage() {
   const [currentDraw, setCurrentDraw] = useState<PillDraw | null>(null)
   const [history, setHistory] = useState<PillDraw[]>([])
   const [loading, setLoading] = useState(true)
+  const [isTipModalOpen, setIsTipModalOpen] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -255,7 +260,7 @@ export default function HomePage() {
 
       {/* Dica do Dia e Devocional */}
       <QuickGrid>
-        <QuickCard $bg={theme.white} $border={theme.border} onClick={() => alert(dailyTip.dica_do_dia)}>
+        <QuickCard $bg={theme.white} $border={theme.border} onClick={() => setIsTipModalOpen(true)}>
           <span className="icon">💡</span>
           <h4>Dica do Dia</h4>
           <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dailyTip.dica_do_dia}</p>
@@ -301,6 +306,13 @@ export default function HomePage() {
           </HistoryItem>
         ))
       )}
+
+      <Modal open={isTipModalOpen} onClose={() => setIsTipModalOpen(false)} title="Dica do Dia" theme={theme}>
+        <p style={{ color: theme.textMuted, fontSize: 14, lineHeight: 1.6 }}>{dailyTip.dica_do_dia}</p>
+        <ActionBtn $primary={theme.primary} onClick={() => setIsTipModalOpen(false)} style={{ marginTop: 24 }}>
+          Entendido!
+        </ActionBtn>
+      </Modal>
     </Page>
   )
 }

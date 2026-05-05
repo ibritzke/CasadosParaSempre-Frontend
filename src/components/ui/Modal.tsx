@@ -41,8 +41,10 @@ const Handle = styled.div`
 `
 
 const ModalTitle = styled.h2<{ $theme?: AppTheme }>`
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   color: ${p => p.$theme?.primaryDark || '#5C1F3E'};
   margin-bottom: 20px;
 `

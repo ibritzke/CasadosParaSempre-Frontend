@@ -25,7 +25,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DevotionalPage from "./pages/DevotionalPage";
 
 const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
   *, *::before, *::after {
     margin: 0;

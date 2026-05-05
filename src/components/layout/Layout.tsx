@@ -35,10 +35,11 @@ const Header = styled.header<{ $bg: string; $border: string }>`
 
 const HeaderText = styled.div``
 const HeaderTitle = styled.h1<{ $color: string }>`
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 19px;
   color: ${p => p.$color};
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 `
 const HeaderSub = styled.p<{ $color: string }>`
   font-size: 12px;
@@ -94,7 +95,7 @@ const NAV_ITEMS = [
 ]
 
 const SUBTITLES: Record<string, string> = {
-  '/home': 'Pílula da Semana',
+  '/home': 'Edificando seu casamento',
   '/pill': 'Sorteio semanal',
   '/records': 'Sua jornada',
   '/calendar': 'Eventos do casal',

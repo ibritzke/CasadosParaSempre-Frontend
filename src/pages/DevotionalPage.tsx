@@ -43,10 +43,11 @@ const BackBtn = styled.button<{ $bg: string; $color: string }>`
 `
 
 const PageTitle = styled.h1<{ $color: string }>`
-  font-family: 'Playfair Display', serif;
-  font-size: 24px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 22px;
   color: ${p => p.$color};
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 `
 
 const DevotionalCard = styled.div<{ $bg: string; $border: string }>`
@@ -58,7 +59,9 @@ const DevotionalCard = styled.div<{ $bg: string; $border: string }>`
 `
 
 const DevTitle = styled.h2<{ $color: string }>`
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   font-size: 22px;
   color: ${p => p.$color};
   margin-bottom: 8px;
