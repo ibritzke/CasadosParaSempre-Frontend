@@ -6,6 +6,11 @@ import { pillApi } from '@/services/api'
 import { PillDraw } from '@/types'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
+import dicasEsposas from '@/components/Dicas/dicas_diarias_esposas.json'
+import dicasMaridos from '@/components/Dicas/dicas_diarias_maridos.json'
+import devHomens from '@/components/Devocionais/devocionais_homens.json'
+import devMulheres from '@/components/Devocionais/devocionais_mulheres.json'
+
 const fadeUp = keyframes`from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); }`
 
 const Page = styled.div<{ $bg: string }>`
@@ -167,6 +172,14 @@ function daysUntilNextMonday() {
   return day === 1 ? 7 : (8 - day) % 7
 }
 
+function getDayOfYear() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), 0, 0)
+  const diff = now.getTime() - start.getTime()
+  const oneDay = 1000 * 60 * 60 * 24
+  return Math.floor(diff / oneDay)
+}
+
 export default function HomePage() {
   const { user, theme } = useAuthStore()
   const navigate = useNavigate()
@@ -193,6 +206,15 @@ export default function HomePage() {
   const greet = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
   const roleLabel = user.role === 'HUSBAND' ? 'marido' : 'esposa'
   const days = daysUntilNextMonday()
+
+  const dayOfYear = getDayOfYear()
+  const tipsArray = user.role === 'WIFE' ? dicasEsposas : dicasMaridos
+  const dailyTip = tipsArray[(dayOfYear - 1) % tipsArray.length]
+
+  const devArray = user.role === 'WIFE' ? devMulheres : devHomens
+  const dailyDev = devArray[(dayOfYear - 1) % devArray.length]
+
+  const isDevotionalRead = user.lastDevotionalReadAt && new Date(user.lastDevotionalReadAt).toDateString() === new Date().toDateString()
 
   return (
     <Page $bg={theme.cream}>
@@ -230,6 +252,21 @@ export default function HomePage() {
           </EmptyPill>
         )}
       </StatusCard>
+
+      {/* Dica do Dia e Devocional */}
+      <QuickGrid>
+        <QuickCard $bg={theme.white} $border={theme.border} onClick={() => alert(dailyTip.dica_do_dia)}>
+          <span className="icon">💡</span>
+          <h4>Dica do Dia</h4>
+          <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dailyTip.dica_do_dia}</p>
+        </QuickCard>
+        
+        <QuickCard $bg={theme.white} $border={theme.border} onClick={() => navigate('/devotional')}>
+          <span className="icon">{isDevotionalRead ? '✅' : '📖'}</span>
+          <h4>Devocional</h4>
+          <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dailyDev.titulo}</p>
+        </QuickCard>
+      </QuickGrid>
 
       <QuickGrid>
         {[

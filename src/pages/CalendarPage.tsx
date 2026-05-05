@@ -480,11 +480,11 @@ export default function CalendarPage() {
     setSaving(true)
     try {
       if (selectedType === 'PERIOD') {
-        const startDate = parseLocalDate(periodStart)
-        const endDate = periodEnd ? parseLocalDate(periodEnd) : null
-        if (endDate && endDate < startDate) { show('A data de término não pode ser antes do início'); setSaving(false); return }
-
         if (editingEventId) {
+          const startDate = parseLocalDate(periodStart)
+          const endDate = periodEnd ? parseLocalDate(periodEnd) : null
+          if (endDate && endDate < startDate) { show('A data de término não pode ser antes do início'); setSaving(false); return }
+
           await calendarApi.updateEvent(editingEventId, {
             type: 'PERIOD',
             date: startDate.toISOString(),
@@ -492,12 +492,25 @@ export default function CalendarPage() {
             note: note.trim() || undefined,
           })
         } else {
-          await calendarApi.createEvent({
-            type: 'PERIOD',
-            date: startDate.toISOString(),
-            endDate: endDate ? endDate.toISOString() : null,
-            note: note.trim() || undefined,
-          })
+          const dateToSave = new Date(selectedDay)
+          dateToSave.setHours(12, 0, 0, 0)
+          const activePeriod = events.find(e => e.type === 'PERIOD' && !e.endDate && parseISO(e.date) <= dateToSave)
+
+          if (activePeriod) {
+            await calendarApi.updateEvent(activePeriod.id, {
+              type: 'PERIOD',
+              date: activePeriod.date,
+              endDate: dateToSave.toISOString(),
+              note: note.trim() ? note.trim() : activePeriod.note,
+            })
+          } else {
+            await calendarApi.createEvent({
+              type: 'PERIOD',
+              date: dateToSave.toISOString(),
+              endDate: null,
+              note: note.trim() || undefined,
+            })
+          }
         }
       } else {
         const date = new Date(selectedDay)
@@ -552,21 +565,6 @@ export default function CalendarPage() {
       }
     }
 
-    // Check predicted periods
-    for (const pp of predictedPeriods) {
-      const np = parseISO(pp);
-      const npEnd = new Date(np.getTime() + 4 * 24 * 60 * 60 * 1000); // 5 days
-      if (isWithinInterval(d, { start: np, end: npEnd })) {
-        const isStart = isSameDay(d, np);
-        const isEnd = isSameDay(d, npEnd);
-        return {
-          color: EVENT_CONFIG.PERIOD.color,
-          pos: isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid',
-          isPredicted: true,
-          isFertile,
-        };
-      }
-    }
 
     const periodEvents = events.filter(e => e.type === 'PERIOD')
     for (const ev of periodEvents) {
@@ -611,11 +609,6 @@ export default function CalendarPage() {
             <CycleInfo $bg="#FCE4EE" $color="#D1477A">
               🔄 Ciclo médio: {avgCycleDays} dias
             </CycleInfo>
-            {predictedPeriods.length > 0 && (
-              <CycleInfo $bg="#FBF3E4" $color="#C9973A">
-                📅 Próx.: {format(parseISO(predictedPeriods[0]), "d 'de' MMM", { locale: ptBR })} (previsão)
-              </CycleInfo>
-            )}
           </div>
         )}
       </CalHeader>
@@ -666,10 +659,6 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: theme.textMuted }}>
           <div style={{ width: 18, height: 10, background: EVENT_CONFIG.PERIOD.color + '55', borderRadius: 3 }} />
           Menstruação
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: theme.textMuted }}>
-          <div style={{ width: 18, height: 10, background: EVENT_CONFIG.PERIOD.color + '30', border: `1px dashed ${EVENT_CONFIG.PERIOD.color}88`, borderRadius: 3 }} />
-          Mens. (Previsão)
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: theme.textMuted }}>
           <span>✨</span> Período Fértil
@@ -748,35 +737,38 @@ export default function CalendarPage() {
         {/* Period range picker */}
         {selectedType === 'PERIOD' && (
           <>
-            <InfoBox $bg="#FCE4EE" $color="#D1477A">
-              🌸 Registre apenas o <strong>início</strong> e, caso já tenha acabado, marque o <strong>término</strong>.
-            </InfoBox>
-            <DateRow>
-              <DateCol>
-                <DateLabel $color={theme.textMuted}>Início *</DateLabel>
-                <DateInput
-                  type="date"
-                  value={periodStart}
-                  onChange={e => setPeriodStart(e.target.value)}
-                  $border={theme.border}
-                  $primary={theme.primary}
-                />
-              </DateCol>
-              <DateCol>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <DateLabel $color={theme.textMuted}>Término</DateLabel>
-                  {periodEnd && <button type="button" onClick={() => setPeriodEnd('')} style={{ background: 'none', border: 'none', color: theme.primary, fontSize: 10, padding: 0, cursor: 'pointer' }}>Limpar</button>}
-                </div>
-                <DateInput
-                  type="date"
-                  value={periodEnd}
-                  min={periodStart}
-                  onChange={e => setPeriodEnd(e.target.value)}
-                  $border={theme.border}
-                  $primary={theme.primary}
-                />
-              </DateCol>
-            </DateRow>
+            {!editingEventId ? (
+              <InfoBox $bg="#FCE4EE" $color="#D1477A">
+                🌸 O sistema identificará automaticamente se este é o <strong>início</strong> ou o <strong>término</strong> do seu ciclo, com base nos registros anteriores.
+              </InfoBox>
+            ) : (
+              <DateRow>
+                <DateCol>
+                  <DateLabel $color={theme.textMuted}>Início *</DateLabel>
+                  <DateInput
+                    type="date"
+                    value={periodStart}
+                    onChange={e => setPeriodStart(e.target.value)}
+                    $border={theme.border}
+                    $primary={theme.primary}
+                  />
+                </DateCol>
+                <DateCol>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <DateLabel $color={theme.textMuted}>Término</DateLabel>
+                    {periodEnd && <button type="button" onClick={() => setPeriodEnd('')} style={{ background: 'none', border: 'none', color: theme.primary, fontSize: 10, padding: 0, cursor: 'pointer' }}>Limpar</button>}
+                  </div>
+                  <DateInput
+                    type="date"
+                    value={periodEnd}
+                    min={periodStart}
+                    onChange={e => setPeriodEnd(e.target.value)}
+                    $border={theme.border}
+                    $primary={theme.primary}
+                  />
+                </DateCol>
+              </DateRow>
+            )}
           </>
         )}
 

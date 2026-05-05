@@ -13,6 +13,7 @@ export interface User {
   avatarUrl?: string
   isAdmin: boolean
   createdAt: string
+  lastDevotionalReadAt?: string | null
 }
 
 export interface Pill {

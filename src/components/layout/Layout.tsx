@@ -88,8 +88,9 @@ const NavItem = styled.button<{ $active: boolean; $color: string; $activeColor: 
 const NAV_ITEMS = [
   { path: '/home', label: 'Início', icon: '🏠' },
   { path: '/pill', label: 'Pílula', icon: '💊' },
-  { path: '/records', label: 'Registros', icon: '📖' },
+  { path: '/records', label: 'Registros', icon: '📝' },
   { path: '/calendar', label: 'Calendário', icon: '📅' },
+  { path: '/devotional', label: 'Devocional', icon: '🙏' },
 ]
 
 const SUBTITLES: Record<string, string> = {
@@ -97,6 +98,7 @@ const SUBTITLES: Record<string, string> = {
   '/pill': 'Sorteio semanal',
   '/records': 'Sua jornada',
   '/calendar': 'Eventos do casal',
+  '/devotional': 'Palavra do dia',
   '/profile': 'Minha conta',
   '/admin': 'Painel admin',
 }

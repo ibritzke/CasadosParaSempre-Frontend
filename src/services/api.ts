@@ -73,5 +73,10 @@ export const adminApi = {
   toggleAdmin: (id: string) => api.patch(`/admin/users/${id}/admin`),
   toggleActive: (id: string) => api.patch(`/admin/users/${id}/active`),
   deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
-  
+}
+
+// ── User ──────────────────────────────────────────
+export const userApi = {
+  updateDevotionalRead: () => api.post('/me/devotional/read'),
+  updateProfile: (data: object) => api.patch('/me', data),
 }
