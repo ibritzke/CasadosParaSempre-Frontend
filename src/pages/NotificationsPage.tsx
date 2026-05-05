@@ -14,6 +14,14 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)))
 }
 
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+}
+
+function isInStandaloneMode() {
+  return ('standalone' in navigator) && (navigator as any).standalone === true
+}
+
 const fadeUp = keyframes`from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); }`
 
 const Page = styled.div<{ $bg: string }>`
@@ -87,6 +95,25 @@ const EnableBtn = styled.button<{ $primary: string; $granted: boolean }>`
   white-space: nowrap;
   transition: all 0.2s;
   &:active { opacity: 0.8; }
+`
+
+const IOSGuideCard = styled.div<{ $bg: string; $border: string }>`
+  background: #FFFBEB;
+  border: 1.5px solid #FCD34D;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 20px;
+`
+
+const IOSStep = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #92400E;
+  line-height: 1.4;
+  .num { font-weight: 700; background: #FCD34D; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; }
 `
 
 const Section = styled.div<{ $bg: string; $border: string }>`
@@ -213,6 +240,12 @@ export default function NotificationsPage() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const ios = isIOS()
+  const standalone = isInStandaloneMode()
+  // On iOS, push only works when installed to Home Screen
+  const iosNotInstalled = ios && !standalone
 
   const [settings, setSettings] = useState<Settings>({
     devotionalTime: '08:00',
@@ -249,19 +282,31 @@ export default function NotificationsPage() {
   }, [])
 
   const handleEnable = async () => {
-    if (loading) return
+    if (loading || iosNotInstalled) return
     setLoading(true)
+    setErrorMsg('')
     try {
+      if (!('Notification' in window)) {
+        throw new Error('Seu navegador não suporta notificações.')
+      }
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Worker não disponível neste navegador.')
+      }
+
       const perm = await Notification.requestPermission()
       setPermission(perm)
 
       if (perm !== 'granted') {
-        show('Permissão de notificações negada. Habilite nas configurações do seu dispositivo.')
+        setErrorMsg('Permissão negada. Acesse as configurações do dispositivo para habilitar.')
         return
       }
 
-      const reg = await navigator.serviceWorker.ready
-      const sub = await reg.pushManager.subscribe({
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Service Worker timeout')), 8000))
+      ])
+
+      const sub = await (reg as ServiceWorkerRegistration).pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       })
@@ -269,8 +314,10 @@ export default function NotificationsPage() {
       await notificationApi.subscribe(sub as PushSubscription)
       setIsSubscribed(true)
       show('Notificações ativadas com sucesso! 🔔')
-    } catch (err) {
-      show('Não foi possível ativar as notificações. Tente novamente.')
+    } catch (err: any) {
+      const msg = err?.message || 'Erro desconhecido'
+      setErrorMsg(`Não foi possível ativar: ${msg}`)
+      console.error('[Notifications] Enable error:', err)
     } finally {
       setLoading(false)
     }
@@ -312,6 +359,34 @@ export default function NotificationsPage() {
         <PageTitle $color={theme.primaryDark}>Notificações</PageTitle>
       </HeaderRow>
 
+      {/* iOS Guide - only shown on iPhone/iPad not installed */}
+      {iosNotInstalled && (
+        <IOSGuideCard $bg={theme.white} $border={theme.border}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#92400E', marginBottom: 4 }}>
+            👋 Para ativar no iPhone
+          </div>
+          <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>
+            No iPhone, notificações só funcionam quando o app está instalado na Tela de Início:
+          </div>
+          <IOSStep>
+            <div className="num">1</div>
+            <span>Abra este site no <strong>Safari</strong></span>
+          </IOSStep>
+          <IOSStep>
+            <div className="num">2</div>
+            <span>Toque no ícone de compartilhar <strong>⬆</strong> na barra inferior</span>
+          </IOSStep>
+          <IOSStep>
+            <div className="num">3</div>
+            <span>Selecione <strong>"Adicionar à Tela de Início"</strong></span>
+          </IOSStep>
+          <IOSStep>
+            <div className="num">4</div>
+            <span>Abra o app pela Tela de Início e ative as notificações</span>
+          </IOSStep>
+        </IOSGuideCard>
+      )}
+
       {/* Permission card */}
       <PermissionCard $bg={theme.white} $border={theme.border} $granted={granted}>
         <PermIcon>{granted ? '🔔' : '🔕'}</PermIcon>
@@ -322,10 +397,21 @@ export default function NotificationsPage() {
             : 'Ative para receber lembretes diários no seu celular.'
           }</p>
         </PermInfo>
-        <EnableBtn $primary={theme.primary} $granted={granted} onClick={!granted ? handleEnable : undefined} disabled={loading}>
-          {loading ? '...' : granted ? '✅ Ativo' : 'Ativar'}
+        <EnableBtn
+          $primary={theme.primary}
+          $granted={granted}
+          onClick={(!granted && !iosNotInstalled) ? handleEnable : undefined}
+          disabled={loading || iosNotInstalled}
+        >
+          {loading ? '...' : granted ? '✅ Ativo' : iosNotInstalled ? '⚠️ Ver guia' : 'Ativar'}
         </EnableBtn>
       </PermissionCard>
+
+      {errorMsg !== '' && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#B91C1C', lineHeight: 1.5 }}>
+          ⚠️ {errorMsg}
+        </div>
+      )}
 
       {/* Devotional + Tip */}
       <Section $bg={theme.white} $border={theme.border}>
