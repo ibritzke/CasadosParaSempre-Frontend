@@ -80,3 +80,11 @@ export const userApi = {
   updateDevotionalRead: () => api.post('/me/devotional/read'),
   updateProfile: (data: object) => api.patch('/me', data),
 }
+
+// ── Notifications ─────────────────────────────────
+export const notificationApi = {
+  subscribe: (subscription: PushSubscription) => api.post('/notifications/subscribe', { subscription }),
+  getSettings: () => api.get('/notifications/settings'),
+  updateSettings: (data: object) => api.patch('/notifications/settings', data),
+  testPush: () => api.post('/notifications/test'),
+}

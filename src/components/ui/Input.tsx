@@ -14,7 +14,7 @@ export const FormGroup = styled.div`
 export const Label = styled.label`
   font-size: 12px;
   font-weight: 500;
-  color: ${p => p.theme?.textMuted || '#7A5C68'};
+  color: #7A5C68;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `

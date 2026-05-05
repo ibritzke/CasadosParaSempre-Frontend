@@ -39,8 +39,10 @@ const AvatarLarge = styled.div<{ $gradient: string }>`
 `
 
 const ProfileName = styled.h2<{ $color: string }>`
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   color: ${p => p.$color};
 `
 
@@ -78,8 +80,9 @@ const StatCard = styled.div<{ $bg: string; $border: string }>`
 `
 
 const StatNum = styled.div<{ $color: string }>`
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 26px;
+  font-weight: 700;
   color: ${p => p.$color};
   line-height: 1;
 `
@@ -151,12 +154,12 @@ const LogoutBtn = styled.button`
   &:active { opacity: 0.8; }
 `
 
-const AdminBtn = styled.button<{ $color: string; $light: string }>`
+const NavBtn = styled.button<{ $color: string; $light: string }>`
   width: 100%;
   padding: 15px;
   background: ${p => p.$light};
   color: ${p => p.$color};
-  border: 1.5px solid ${p => p.$color};
+  border: 1.5px solid ${p => p.$color}20;
   border-radius: 12px;
   font-family: 'DM Sans', sans-serif;
   font-size: 15px;
@@ -254,10 +257,14 @@ export default function ProfilePage() {
       </Section>
 
       {user.isAdmin && (
-        <AdminBtn $color={theme.primary} $light={theme.primaryLight} onClick={() => navigate('/admin')}>
+        <NavBtn $color={theme.primary} $light={theme.primaryLight} onClick={() => navigate('/admin')}>
           ⭐ Acessar painel admin
-        </AdminBtn>
+        </NavBtn>
       )}
+
+      <NavBtn $color={theme.primary} $light={theme.primaryLight} onClick={() => navigate('/notifications')}>
+        🔔 Gerenciar Notificações
+      </NavBtn>
 
       <LogoutBtn onClick={handleLogout}>Sair da conta</LogoutBtn>
     </Page>

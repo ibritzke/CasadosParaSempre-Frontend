@@ -23,6 +23,7 @@ import AdminPage from "@/pages/AdminPage/AdminPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DevotionalPage from "./pages/DevotionalPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 const GlobalStyle = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
@@ -164,6 +165,17 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <DevotionalPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <NotificationsPage />
                 </Layout>
               </ProtectedRoute>
             }
