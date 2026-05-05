@@ -53,6 +53,29 @@ const StatusCard = styled.div<{ $bg: string; $border: string }>`
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 `
 
+const FeatureCard = styled.button<{ $bg: string; $border: string }>`
+  background: ${p => p.$bg};
+  border-radius: 16px;
+  border: 1px solid ${p => p.$border};
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.15s;
+  
+  &:active { transform: scale(0.98); }
+
+  .icon { font-size: 32px; flex-shrink: 0; }
+  .content { flex: 1; min-width: 0; }
+  h4 { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 2px; letter-spacing: -0.3px; }
+  p { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+`
+
 const WeekBadge = styled.span<{ $bg: string; $color: string }>`
   display: inline-flex;
   align-items: center;
@@ -259,19 +282,21 @@ export default function HomePage() {
       </StatusCard>
 
       {/* Dica do Dia e Devocional */}
-      <QuickGrid>
-        <QuickCard $bg={theme.white} $border={theme.border} onClick={() => setIsTipModalOpen(true)}>
-          <span className="icon">💡</span>
+      <FeatureCard $bg={theme.white} $border={theme.border} onClick={() => setIsTipModalOpen(true)}>
+        <div className="icon">💡</div>
+        <div className="content">
           <h4>Dica do Dia</h4>
-          <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dailyTip.dica_do_dia}</p>
-        </QuickCard>
-        
-        <QuickCard $bg={theme.white} $border={theme.border} onClick={() => navigate('/devotional')}>
-          <span className="icon">{isDevotionalRead ? '✅' : '📖'}</span>
-          <h4>Devocional</h4>
-          <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dailyDev.titulo}</p>
-        </QuickCard>
-      </QuickGrid>
+          <p>{dailyTip.dica_do_dia}</p>
+        </div>
+      </FeatureCard>
+
+      <FeatureCard $bg={theme.white} $border={theme.border} onClick={() => navigate('/devotional')}>
+        <div className="icon">{isDevotionalRead ? '✅' : '📖'}</div>
+        <div className="content">
+          <h4>Devocional Diário</h4>
+          <p>{dailyDev.titulo}</p>
+        </div>
+      </FeatureCard>
 
       <QuickGrid>
         {[
